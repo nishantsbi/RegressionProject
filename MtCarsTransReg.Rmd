@@ -1,0 +1,56 @@
+Fuel Economy and Analysis of Motor Trend Data Transmissions
+========================================================
+
+## Executive Summary
+
+The contribution of automatic or manual transmissions (AM) to miles per gallon (MPG) was analyzed using the 1974 _Motor Trend Magazine_ data of 11 variables on 32 automobiles.  The resulting analysis of the _mtcars_ dataset in the standard R datasets package indicate:
+
+- Cars with manual transmissions had better MPGs than automatic transmissions
+- Holding all other variables constant, cars with manual transmissions had x.xxx MPG better fuel economy
+- There were sevaral confounding variables including yyy, zzz which were included in the final model beyond transmission type
+- The final model explained xxx of the variance as described by the $R^2$ value
+- more
+- more
+
+## Data Transformation and Exploration
+
+Several of the 11 variables in the dataset were initially numeric and had to be transformed into factor variables to be appropriately analyzed.
+
+```{r echo=TRUE, results='hide'}
+mtcars$am <- factor(mtcars$am, levels=c(0,1), labels=c("Automatic","Manual"))
+mtcars$cyl <- factor(mtcars$cyl); mtcars$vs <- factor(mtcars$vs)
+```
+As can be seen in __Appendix Figure 1__, considering no other variables, there is a significant difference in MPG based on transmission type.
+
+## Linear Models and Selection
+
+A baseline model was initially developed using just trasmission type and MPG.
+```{r baselm, highlight=TRUE, echo=TRUE}
+(summaryBaselm <- summary(baselm <- lm(mpg ~ am, data=mtcars)))
+(ciBaselm <- confint(baselm))  # confidence intervals of the coefficients
+```
+As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])` , conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value.
+
+## Conclusions
+
+
+## Appendix
+The following information is availabe as an appendix for review.
+
+```{r fig.width=5, fig.height=5, echo=FALSE}
+plot(mpg ~ am, mtcars, col="red",
+     xlab="Transmission Type", ylab="Miles per Gallon",
+     main="MPG by Transmission")
+```
+Figure 1: Automatic vs. Manual transmissions and Miles per Gallon with no other variables
+
+```{r residuals, fig.width=7, fig.height=6, echo=FALSE}
+par(mfrow=c(2,2))
+plot(baselm)
+```
+Figure 2: Residuals analysis of base model including just mpg and transmission type
+
+
+```{r}
+summary(mtcars)
+```
