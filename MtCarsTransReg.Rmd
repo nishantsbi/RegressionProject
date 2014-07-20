@@ -6,11 +6,10 @@ Fuel Economy and Analysis of Motor Trend Data Transmissions
 The contribution of automatic or manual transmissions (AM) to miles per gallon (MPG) was analyzed using the 1974 _Motor Trend Magazine_ data of 11 variables on 32 automobiles.  The resulting analysis of the _mtcars_ dataset in the standard R datasets package indicate:
 
 - Cars with manual transmissions had better MPGs than automatic transmissions
-- Holding all other variables constant, cars with manual transmissions had x.xxx MPG better fuel economy
-- There were sevaral confounding variables including yyy, zzz which were included in the final model beyond transmission type
-- The final model explained xxx of the variance as described by the $R^2$ value
-- more
-- more
+- Holding all other variables constant, cars with manual transmissions had 7.25 MPG better fuel economy
+- There were several confounding variables including weight in lbs/1000 and quarter mile time in seconds which were included in the final model in addition to transmission type
+- The final model explained nearly 0.85 of the variance as described by the $R^2$ value
+- In the final model including these additional variables, manual transmissions had better mileage but only about 2.9 MPG different than automatic transmission cars holding all other variables constant
 
 ## Data Transformation and Exploration
 
@@ -26,30 +25,33 @@ As can be seen in __Appendix Figure 1__, considering no other variables, there i
 
 ## Linear Models and Selection
 __Base model:__
-A baseline model was initially developed using just trasmission type for an independent variable and MPG as the dependent.
+A baseline model was initially developed using just transmission type for an independent variable and MPG as the dependent.
 ```{r baselm, highlight=TRUE, echo=FALSE}
 (summaryBaselm <- summary(baselm <- lm(mpg ~ am, data=mtcars)))
 (ciBaselm <- confint(baselm))  # confidence intervals of the coefficients
 ```
-As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])` , conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value.
+As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])`, conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value. (Residual tests of this model may be found in __Appendix Figure 3__.)
 
-__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission created bias in the model.  We created several models and looked at the signficances of comparing models using ANOVA tests, the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function and _dfbetas_ on the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
+__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission type created a bias model.  We created several models using the _step()_ function and looked at the significance of comparing models using ANOVA tests, and the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function and _dfbetas_ on the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
 
-It was determined that a model using transmission, horsepower and weight had a signficantly better 
-```{r bestlm}
-(summaryBestlm <- summary(bestlm <- lm(mpg ~ am + hp + wt, data=mtcars)))
+```{r findBest, results='hide', echo=TRUE}
+summaryBestlm <- summary(bestlm <- step(lm(mpg ~ ., data=mtcars)))
+```
+```{r bestlmDisplay, echo=FALSE}
+summaryBestlm 
 anova (baselm, bestlm)
 ```
-But there is a high correlation between transmission type and weight and as a result the transmission type is no longer statistically significant in the model (p= `r sprintf("%f", coef(summaryBestlm)[2,4])`).  Therefore transmission type can be dropped from the model resulting in a model which is simply dependent on horsepower and vehicle weight.
-
-# FIND THE TEST THAT SHOW COR OF ALL VARIABLES AND INSERT THAT IN THE APPENDIX
+It was determined that a model using transmission type, quarter mile time in seconds, and weight in lbs/1000 had a significantly better result (p-value for each coefficient < 0.05, $R^2$ = `r summaryBestlm$r.squared`) and was statistically significantly better than the base model based on anova tests (p = 1.6e-9). The confidence interval for manual transmissions was reduced to `r coef(summaryBestlm)[4,1]` (conf interval = `r confint(bestlm)[4,1]` to `r confint(bestlm)[4,2]`) with these additional parameters added to the model.  The residual tests of this new model are available in __Appendix Figure 4__.
 
 ## Conclusions
 
-FINAL CONCLUSIONS TO BE ADDED HERE
+Taken on its own, manual transmission cars would save on average `r coef(summaryBaselm)[2,1]` MPG if it was the only modeled independent variable.  However, a significantly better model with quarter mile time, weight and transmission type would explain about `r summaryBestlm$r.squared` of the variance in MPG.  Holding quarter mile time and weight constant, this model results in manual transmissions having `r coef(summaryBestlm)[4,1]` MPG better than automatic transmissions.
+
+
 
 ## Appendix
-The following information is availabe as an appendix for review.
+
+The following information is available as an appendix for review or reference.
 
 ```{r fig.width=5, fig.height=5, echo=FALSE}
 plot(mpg ~ am, mtcars, col="red",
@@ -61,12 +63,21 @@ Figure 1: Automatic vs. Manual transmissions and Miles per Gallon with no other 
 ```{r}
 summary(mtcars)
 ```
+Figure 2: Summary of mtcars data used for analysis
 
-```{r residuals, fig.width=7, fig.height=6, echo=FALSE}
+```{r residualsBase, fig.width=7, fig.height=6, echo=FALSE}
 par(mfrow=c(2,2))
-plot(baselm, main="Residual Analysis of Base model")
+plot(baselm, main="Residual Analysis of Base Model")
 ```
-Figure 2: Residuals analysis of base model including just mpg and transmission type
+Figure 3: Residuals analysis of base model including just mpg and transmission type
+
+
+```{r residualsBest, fig.width=7, fig.height=6, echo=FALSE}
+par(mfrow=c(2,2))
+plot(bestlm, main="Residual Analysis of Best Model")
+```
+Figure 4: Residuals analysis of best model including mpg, weight, quarter mile time and transmission type
+
 
 ### Exploring aternate models
 
@@ -83,3 +94,7 @@ anova (baselm, bestlm)
 
 (summaryBestNoAMlm <- summary(bestNoAMlm <- lm(mpg ~ hp + wt, data=mtcars)))
 anova (baselm, bestNoAMlm)
+
+# Note AM and HP leaves AM signifcant and explains 78% variance.
+
+
