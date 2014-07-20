@@ -17,22 +17,36 @@ The contribution of automatic or manual transmissions (AM) to miles per gallon (
 Several of the 11 variables in the dataset were initially numeric and had to be transformed into factor variables to be appropriately analyzed.
 
 ```{r echo=TRUE, results='hide'}
+library(car)
+mtcars <- datasets::mtcars  # start with the baseline data from the datasets package
 mtcars$am <- factor(mtcars$am, levels=c(0,1), labels=c("Automatic","Manual"))
 mtcars$cyl <- factor(mtcars$cyl); mtcars$vs <- factor(mtcars$vs)
 ```
 As can be seen in __Appendix Figure 1__, considering no other variables, there is a significant difference in MPG based on transmission type.
 
 ## Linear Models and Selection
-
-A baseline model was initially developed using just trasmission type and MPG.
-```{r baselm, highlight=TRUE, echo=TRUE}
+__Base model:__
+A baseline model was initially developed using just trasmission type for an independent variable and MPG as the dependent.
+```{r baselm, highlight=TRUE, echo=FALSE}
 (summaryBaselm <- summary(baselm <- lm(mpg ~ am, data=mtcars)))
 (ciBaselm <- confint(baselm))  # confidence intervals of the coefficients
 ```
 As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])` , conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value.
 
+__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission created bias in the model.  We created several models and looked at the signficances of comparing models using ANOVA tests, the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function and _dfbetas_ on the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
+
+It was determined that a model using transmission, horsepower and weight had a signficantly better 
+```{r bestlm}
+(summaryBestlm <- summary(bestlm <- lm(mpg ~ am + hp + wt, data=mtcars)))
+anova (baselm, bestlm)
+```
+But there is a high correlation between transmission type and weight and as a result the transmission type is no longer statistically significant in the model (p= `r sprintf("%f", coef(summaryBestlm)[2,4])`).  Therefore transmission type can be dropped from the model resulting in a model which is simply dependent on horsepower and vehicle weight.
+
+# FIND THE TEST THAT SHOW COR OF ALL VARIABLES AND INSERT THAT IN THE APPENDIX
+
 ## Conclusions
 
+FINAL CONCLUSIONS TO BE ADDED HERE
 
 ## Appendix
 The following information is availabe as an appendix for review.
@@ -44,13 +58,28 @@ plot(mpg ~ am, mtcars, col="red",
 ```
 Figure 1: Automatic vs. Manual transmissions and Miles per Gallon with no other variables
 
-```{r residuals, fig.width=7, fig.height=6, echo=FALSE}
-par(mfrow=c(2,2))
-plot(baselm)
-```
-Figure 2: Residuals analysis of base model including just mpg and transmission type
-
-
 ```{r}
 summary(mtcars)
 ```
+
+```{r residuals, fig.width=7, fig.height=6, echo=FALSE}
+par(mfrow=c(2,2))
+plot(baselm, main="Residual Analysis of Base model")
+```
+Figure 2: Residuals analysis of base model including just mpg and transmission type
+
+### Exploring aternate models
+
+fitAll <- lm(mpg ~ ., data=mtcars)  # no good
+summary(fitAll)
+vif(fitAll)
+
+(summaryBest2lm <- summary(best2lm <- lm(mpg ~ am + hp, data=mtcars)))
+anova (baselm, best2lm)
+
+
+(summaryBestlm <- summary(bestlm <- lm(mpg ~ am + hp + wt, data=mtcars)))
+anova (baselm, bestlm)
+
+(summaryBestNoAMlm <- summary(bestNoAMlm <- lm(mpg ~ hp + wt, data=mtcars)))
+anova (baselm, bestNoAMlm)
