@@ -1,3 +1,6 @@
+---
+output: word_document
+---
 Fuel Economy and Analysis of Motor Trend Data Transmissions
 ========================================================
 
@@ -16,7 +19,6 @@ The contribution of automatic or manual transmissions (AM) to miles per gallon (
 Several of the 11 variables in the dataset were initially numeric and had to be transformed into factor variables to be appropriately analyzed.
 
 ```{r echo=TRUE, results='hide'}
-library(car)
 mtcars <- datasets::mtcars  # start with the baseline data from the datasets package
 mtcars$am <- factor(mtcars$am, levels=c(0,1), labels=c("Automatic","Manual"))
 mtcars$cyl <- factor(mtcars$cyl); mtcars$vs <- factor(mtcars$vs)
@@ -32,12 +34,11 @@ A baseline model was initially developed using just transmission type for an ind
 ```
 As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])`, conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value. (Residual tests of this model may be found in __Appendix Figure 3__.)
 
-__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission type created a bias model.  We created several models using the _step()_ function and looked at the significance of comparing models using ANOVA tests, and the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function and _dfbetas_ on the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
+__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission type created a bias model.  We created several models using and then verified it with the _step()_ function (see appendix for optional exploratory analysis) and looked at the significance of comparing models using ANOVA tests, and the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function, _dfbetas_ and _PRESS_ valueson the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
 
-```{r findBest, results='hide', echo=TRUE}
-summaryBestlm <- summary(bestlm <- step(lm(mpg ~ ., data=mtcars)))
-```
+
 ```{r bestlmDisplay, echo=FALSE}
+summaryBestlm <- summary(bestlm <- lm(mpg ~ wt + qsec + am, data=mtcars))
 summaryBestlm 
 anova (baselm, bestlm)
 ```
@@ -45,56 +46,75 @@ It was determined that a model using transmission type, quarter mile time in sec
 
 ## Conclusions
 
-Taken on its own, manual transmission cars would save on average `r coef(summaryBaselm)[2,1]` MPG if it was the only modeled independent variable.  However, a significantly better model with quarter mile time, weight and transmission type would explain about `r summaryBestlm$r.squared` of the variance in MPG.  Holding quarter mile time and weight constant, this model results in manual transmissions having `r coef(summaryBestlm)[4,1]` MPG better than automatic transmissions.
+Taken on its own, manual transmission cars would save on average `r coef(summaryBaselm)[2,1]` MPG if it was the only modeled independent variable.  However, a significantly better model with quarter mile time, weight and transmission type would explain about `r summaryBestlm$r.squared` of the variance in MPG.  Holding quarter mile time and weight constant, this model results in manual transmissions having `r coef(summaryBestlm)[4,1]` MPG better than automatic transmissions. 
+
+In reviewing the residuals and PRESS values, the Datsun 710, Merc 230, Toyota Corona & Corolla, Fiat 128 and Chrysler Imperial had impacts on the regression (see __Appendix Figure 5__).
+
+The reproducible research used to produce this report can be found at https://github.com/svonkleeck/RegressionProject.
 
 
-
-## Appendix
+# Appendix
 
 The following information is available as an appendix for review or reference.
 
-```{r fig.width=5, fig.height=5, echo=FALSE}
+```{r fig.width=4, fig.height=4, echo=FALSE}
 plot(mpg ~ am, mtcars, col="red",
      xlab="Transmission Type", ylab="Miles per Gallon",
      main="MPG by Transmission")
 ```
-Figure 1: Automatic vs. Manual transmissions and Miles per Gallon with no other variables
 
-```{r}
+__Figure 1__: Automatic vs. Manual transmissions and Miles per Gallon with no other variables
+
+```{r }
+options(width=90)
 summary(mtcars)
 ```
-Figure 2: Summary of mtcars data used for analysis
 
-```{r residualsBase, fig.width=7, fig.height=6, echo=FALSE}
-par(mfrow=c(2,2))
-plot(baselm, main="Residual Analysis of Base Model")
+__Figure 2__: Summary of mtcars data used for analysis
+
+```{r residualsBase, fig.width=6, fig.height=6, echo=FALSE}
+par(mfrow=c(2,2), oma=c(0,0,1,0))
+plot(baselm)#, main="Residual Analysis of Base Model")
 ```
-Figure 3: Residuals analysis of base model including just mpg and transmission type
+
+__Figure 3__: Residuals analysis of base model including just mpg and transmission type
 
 
-```{r residualsBest, fig.width=7, fig.height=6, echo=FALSE}
-par(mfrow=c(2,2))
-plot(bestlm, main="Residual Analysis of Best Model")
+```{r residualsBest, fig.width=6, fig.height=6, echo=FALSE}
+par(mfrow=c(2,2), oma=c(0,0,1,0))
+plot(bestlm)
+#mtext("Residual Analysis of Best Model", adj=0.5,  side=3, line=2, outer=TRUE)
 ```
-Figure 4: Residuals analysis of best model including mpg, weight, quarter mile time and transmission type
 
+__Figure 4__: Residuals analysis of best model including mpg, weight, quarter mile time and transmission type
+
+```{r hatPRESS}
+# influence potential
+hat <- hatvalues(bestlm)
+#hat[order(hat, decreasing = TRUE)]
+PRESS<-resid(bestlm)/(1-hat)
+PRESS[order(PRESS)]
+dfbetas(bestlm)
+```
+
+__Figure 5__: Press values, dfbetas influence and hatvalues of influence on the best model
+
+We can see the influence specific vehicles had on each coefficient.
 
 ### Exploring aternate models
+Optionally how to find the best fit using the step() function.  This is not part of the official analysis but was used to verify the optimal model selection.
 
+```{r findBest, results='hide', echo=TRUE}
+library(car)
+(summaryBestlmStep <- summary(bestlmStep <- step(lm(mpg ~ ., data=mtcars))))
+```
+Other significant methods explored:
+```
 fitAll <- lm(mpg ~ ., data=mtcars)  # no good
-summary(fitAll)
-vif(fitAll)
+summary(fitAll); vif(fitAll)
 
-(summaryBest2lm <- summary(best2lm <- lm(mpg ~ am + hp, data=mtcars)))
+(summaryBest2lm <- summary(best2lm <- lm(mpg ~ am + hp, data=mtcars))); 
 anova (baselm, best2lm)
-
-
-(summaryBestlm <- summary(bestlm <- lm(mpg ~ am + hp + wt, data=mtcars)))
-anova (baselm, bestlm)
-
-(summaryBestNoAMlm <- summary(bestNoAMlm <- lm(mpg ~ hp + wt, data=mtcars)))
-anova (baselm, bestNoAMlm)
-
-# Note AM and HP leaves AM signifcant and explains 78% variance.
-
+```
+Note AM and HP leaves AM signifcant and explains 78% variance but not best model as confirmed by step analysis.
 
