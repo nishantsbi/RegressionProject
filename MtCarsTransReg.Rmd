@@ -34,15 +34,15 @@ A baseline model was initially developed using just transmission type for an ind
 ```
 As can be seen, with no other variables there is a statistically significant difference of `r baselm$coefficients[2]` increase in MPG for manual transmissions (p=`r sprintf("%f", coef(summaryBaselm)[2,4])`, conf interval= (`r ciBaselm[2,1]` to `r ciBaselm[2,2]`)). However, the model only explains `r summary(baselm)$r.squared` of the variance in mpg based on the $R^2$ value. (Residual tests of this model may be found in __Appendix Figure 3__.)
 
-__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission type created a bias model.  We created several models using and then verified it with the _step()_ function (see appendix for optional exploratory analysis) and looked at the significance of comparing models using ANOVA tests, and the variance inflation to find a more parsimonious, interpretable representation.  We also looked at outliers using _hatvalues_ function, _dfbetas_ and _PRESS_ valueson the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
-
+__Alternate model:__ However, in reviewing other parameters in the dataset, it was determined that including only the transmission type created a bias model.  We created several models incrementally adding parameters to find a possible optimum model with statistically significant parameters (P < 0.05) and strong $R^2$, variance inflation to find a parsimonious, interpretable representation.  Models were compared on these factors and using ANOVA tests.  The final model was then verified with the _step()_ function (see appendix for optional exploratory analysis) and compared to the singal variate model of mpg to transmission type using an ANOVA test.  We also looked at outliers using _hatvalues_ function, _dfbetas_ and _PRESS_ values on the most significant model to see if any of the model coefficients were significantly influence by specific outlier values.
 
 ```{r bestlmDisplay, echo=FALSE}
 summaryBestlm <- summary(bestlm <- lm(mpg ~ wt + qsec + am, data=mtcars))
 summaryBestlm 
 anova (baselm, bestlm)
+confint(bestlm)[2:4,]
 ```
-It was determined that a model using transmission type, quarter mile time in seconds, and weight in lbs/1000 had a significantly better result (p-value for each coefficient < 0.05, $R^2$ = `r summaryBestlm$r.squared`) and was statistically significantly better than the base model based on anova tests (p = 1.6e-9). The confidence interval for manual transmissions was reduced to `r coef(summaryBestlm)[4,1]` (conf interval = `r confint(bestlm)[4,1]` to `r confint(bestlm)[4,2]`) with these additional parameters added to the model.  The residual tests of this new model are available in __Appendix Figure 4__.
+It was determined that a model using transmission type, quarter mile time in seconds, and weight in lbs/1000 had a significantly better result (p-value for each coefficient < 0.05, $R^2$ = `r summaryBestlm$r.squared`) and was statistically significantly better than the base model based on anova tests (p = 1.6e-9). The confidence interval for the change in mpg for manual transmissions was reduced to `r coef(summaryBestlm)[4,1]` (conf interval = `r confint(bestlm)[4,1]` to `r confint(bestlm)[4,2]`) with these additional parameters added to the model.  The residual tests of this new model are available in __Appendix Figure 4__.
 
 ## Conclusions
 
@@ -101,20 +101,53 @@ __Figure 5__: Press values, dfbetas influence and hatvalues of influence on the 
 
 We can see the influence specific vehicles had on each coefficient.
 
-### Exploring aternate models
-Optionally how to find the best fit using the step() function.  This is not part of the official analysis but was used to verify the optimal model selection.
+```{r echo=FALSE, results='hide'}
+# Some additional exploratory analysis for reproducible research but not included in the report
+library(car)  # for vif() as per class
 
-```{r findBest, results='hide', echo=TRUE}
-library(car)
-(summaryBestlmStep <- summary(bestlmStep <- step(lm(mpg ~ ., data=mtcars))))
-```
-Other significant methods explored:
-```
 fitAll <- lm(mpg ~ ., data=mtcars)  # no good
 summary(fitAll); vif(fitAll)
 
+# Loop looking through many subsets of models for initial significant variables
+# build model up from 1 am parameter
+# this will help narrow parameters
+newVars <- names(mtcars[!names(mtcars) %in% c("am", "mpg")]) # all names but am and mpg
+baseformula <- "mpg ~ am"
+prevlm <- baselm
+# all formulas of length 2 with am
+for (n  in newVars) {  #loop through all variables adding to base model
+        formula <- paste(baseformula, n, sep="+")
+        print(baseformula)
+        newlm <- lm(formula, data=mtcars)
+        print(summary(newlm))
+        print(anova(newlm, baselm))
+}
+
+# Loop through adding variables
+for (n  in newVars) {  #loop through all variables adding to base model
+        baseformula <- paste(baseformula, n, sep="+")
+        print(baseformula)
+        newlm <- lm(baseformula, data=mtcars)
+        print(summary(newlm))
+        print(anova(newlm, baselm))
+}
+
+# As a result above, we keep seeing hp and wt
+# Other significant methods explored:
+
+# R2 78%, good p vals
 (summaryBest2lm <- summary(best2lm <- lm(mpg ~ am + hp, data=mtcars))); 
 anova (baselm, best2lm)
-```
-Note AM and HP leaves AM signifcant and explains 78% variance but not best model as confirmed by step analysis.
 
+# This is good with R2 85%
+(summaryBest2lm <- summary(best2lm <- lm(mpg ~ am + wt + qsec, data=mtcars))); 
+anova (baselm, best2lm)
+#Note AM and HP leaves AM signifcant and explains 78% variance but not best model as confirmed by step analysis.
+
+# Optionally how to find the best fit using the step() function.  This is not part of the official analysis but was used to 
+# verify the optimal model selection.
+# Finally let's validated against car::step() best model
+
+
+(summaryBestlmStep <- summary(bestlmStep <- step(lm(mpg ~ ., data=mtcars))))
+```
